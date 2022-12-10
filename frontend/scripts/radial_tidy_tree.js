@@ -101,7 +101,7 @@ function Tree(data, { // data is either tabular (array of objects) or hierarchy 
     return svg.node();
   }
 
-fetch("http://0.0.0.0:8080/denis.json")
+fetch("http://0.0.0.0:8080/tree_test_data.json")
 .then((response) => response.json())
 .then((data) => {
     

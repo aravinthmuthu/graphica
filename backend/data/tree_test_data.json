@@ -1,0 +1,85 @@
+{
+    "name": "Denis Stamper Lawson",
+    "children": [
+        {
+            "name": "Early Life",
+            "children": [
+                {
+                    "name": "Family",
+                    "children": [
+                        {
+                            "name": "Phyllis Neno (née Stamper)"
+                        },
+                        {
+                            "name": "Laurence Lawson"
+                        }
+                    ]
+                },
+                {
+                    "name": "Education",
+                    "children": [
+                        {
+                            "name": "Crieff Primary School"
+                        },
+                        {
+                            "name": "Morrison's Academy"
+                        },
+                        {
+                            "name": "Royal Scottish Academy of Music and Drama"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Career",
+            "children": [
+                {
+                    "name": "Stage"
+                },
+                {
+                    "name": "Television"
+                },
+                {
+                    "name": "Star Wars Trilogy"
+                },
+                {
+                    "name": "West End Stage"
+                },
+                {
+                    "name": "Directing"
+                }
+            ]
+        },
+        {
+            "name": "Personal Life",
+            "children": [
+                {
+                    "name": "Relationships",
+                    "children": [
+                        {
+                            "name": "Diane Fletcher"
+                        },
+                        {
+                            "name": "Sheila Gish"
+                        },
+                        {
+                            "name": "Karen Prentice"
+                        }
+                    ]
+                },
+                {
+                    "name": "Family",
+                    "children": [
+                        {
+                            "name": "Jamie Lawson"
+                        },
+                        {
+                            "name": "Ewan McGregor"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
