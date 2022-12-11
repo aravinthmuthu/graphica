@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>ZingSoft Demo</title>
+  <script nonce="undefined" src="https://cdn.zingchart.com/zingchart.min.js"></script>
+  <style>
+    .chart--container {
+      min-height: 530px;
+      width: 100%;
+      height: 100%;
+    }
+
+    .zc-ref {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="myChart" class="chart--container">
+    <a class="zc-ref" href="https://www.zingchart.com/">Powered by ZingChart</a>
+  </div>
+  <script>
+    ZC.LICENSE = ["569d52cefae586f634c54f86dc99e6a9", "b55b025e438fa8a98e32482b5f768ff5"];
+    let aColorRange = ['#D36A67', '#E5896C', '#F9BC7F', '#F9DEA7', '#9CD8B1', '#91BAA0', '#389B96', '#425B5E'];
+    let aDomain = [100000, 40000000]; // [mix,max]
+
+ 
+    fetch('http://0.0.0.0:8080/world_map_data.json')
+    .then((response) => response.json())
+    .then((data) => {
+        chartItems = data;
+        let chartConfig = {
+        title: {
+            text: 'Population By Province',
+            align: 'left',
+            fontSize: '14px'
+        },
+        shapes: [{
+            type: 'zingchart.maps',
+            options: {
+            name: 'usa',
+            scale: {
+                type: 'quantize', // if you define threshold here your domain length must match your range length
+                domain: aDomain, // [min,max]
+                range: aColorRange
+            },
+            style: {
+                tooltip: {
+                backgroundColor: 'inherit',
+                borderColor: '#FFF',
+                borderWidth: '2px',
+                fontColor: '#000',
+                fontSize: '15px'
+                },
+                controls: {
+                placement: 'br'
+                },
+                hoverState: {
+                backgroundColor: 'transparent',
+                borderColor: '#000',
+                borderWidth: '2px'
+                },
+                items: chartItems,
+                label: { // text displaying. Like valueBox
+                fontSize: '8px',
+                visible: true
+                }
+            },
+            zoom: 1.1
+            }
+        }],
+        choropleth: {
+            legend: {
+            align: 'left',
+            verticalAlign: 'bottom',
+            header: {
+                text: 'Population Range'
+            },
+            item: {
+                cursor: 'pointer',
+            },
+            items: [{
+                text: ' > 100,000'
+            }],
+            marker: {
+                cursor: 'pointer'
+            }
+            }
+        }
+        };
+
+        zingchart.loadModules('maps,maps-usa');
+        zingchart.render({
+        id: 'myChart',
+        modules: 'choropleth',
+        data: chartConfig,
+        height: '100%',
+        width: '100%',
+        });
+
+        // Used to only bind events once. When the window re-sizes we don't need to overwrite the events
+        let firstTimeLoad = true;
+
+        let leftOrRight = (value, left, right) => {
+        let leftDiff = Math.abs(value - left);
+        let rightDiff = Math.abs(value - right);
+        return leftDiff < rightDiff ? true : false
+        };
+
+        let isBetween = (value, left, right) => {
+        return value > left && value < right;
+        };
+
+        let thresholdIndex = (value, scale) => {
+        for (let i = 0; i < scale.length; i++) {
+            if (value < scale[i]) {
+            return i;
+            }
+        }
+        return scale.length;
+        };
+
+        let quantizeIndex = (value, scale) => {
+        let first = scale[0];
+        let last = scale[scale.length - 1];
+        for (let i = 0; i < scale.length; i++) {
+            if (value <= first) {
+            return 0;
+            } else if (value >= last) {
+            return scale.length - 1;
+            } else if (i < scale.length - 1) {
+            if (value == scale[i]) {
+                return i;
+            } else {
+                let current = scale[i];
+                let next = scale[i + 1];
+                if (isBetween(value, current, next)) {
+                return leftOrRight(value, current, next) ? i : i + 1;
+                }
+            }
+            }
+        }
+        };
+
+        // define mix max for domain
+        let quantize = (value, domain, range) => {
+        let index = quantizeIndex(value, domain);
+        return {
+            range: range[index],
+            domain: domain[index],
+            group: index
+        };
+        };
+
+        let quantizeDomain = (aDomain, aRange) => {
+        let iMin = aDomain[0];
+        let iMax = aDomain[1];
+        let iSlope = (iMax - iMin) / (aRange.length - 1);
+        let aScale = [];
+        for (let i = 0; i < aRange.length; i++) {
+            aScale[i] = (iSlope * i + iMin);
+        }
+        return aScale;
+        };
+
+        let generateDomain = (sType, aDomain, aRange) => {
+        let aScale = aDomain;
+        if (sType == 'quantize') {
+            aScale = quantizeDomain(aDomain, aRange)
+        }
+        return aScale;
+        };
+
+        let drawLegend = (domain, range, json) => {
+        if (!json.series)
+            json.series = [];
+
+        json.legend = json.choropleth.legend || {};
+        for (let i = 0; i < domain.length; i++) {
+            json.series[i] = {
+            /*
+            * merge text if user wants to define new text.
+            * else format thousands separator
+            */
+            text: (json.legend.items && json.legend.items[i] && json.legend.items[i].text) ? json.legend.items[i].text : Math.round(domain[i]).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','),
+            lineColor: range[i],
+            backgroundColor: range,
+            dataDomain: domain[i],
+            dataVisible: true
+            };
+        }
+        };
+
+        let legendClickForMaps = (e) => {
+        let clickedDomain = e.xdata.domain;
+        let plotIsVisible = e.xdata.visible;
+        let plotIndex = e.plotindex;
+        let json = zingchart.exec(e.id, 'getdata');
+        json = json.graphset ? json.graphset[0] : json;
+        let items = json.shapes;
+        let toggleOffColor = '#c3c3c3';
+        e.xdata.visible = !e.xdata.visible;
+
+        for (let i = 0; i < items.length; i++) {
+            if (clickedDomain == items[i].domain) {
+            if (plotIsVisible) {
+                items[i]['background-color'] = toggleOffColor;
+            } else {
+                items[i]['background-color'] = items[i]['original-background-color'];
+            }
+            zingchart.exec(e.id, 'updateobject', {
+                type: 'shape',
+                data: items[i]
+            });
+            }
+        }
+        };
+
+        // define a range of thresholds for domain
+        let threshold = (value, domain, range) => {
+        let index = thresholdIndex(value, domain);
+        return {
+            range: range[index],
+            domain: domain[index],
+            group: index
+        };
+        };
+
+        /* custom module for choropleth charts */
+        zingchart.defineModule('choropleth', 'plugin', (originalJson) => {
+        if (originalJson.shapes[0].options) {
+            let options = originalJson.shapes[0].options;
+            let mapType = options.name;
+            let scaleType = options.scale.type;
+            let range = options.scale.range;
+            let domain = generateDomain(scaleType, options.scale.domain, range);
+            let scaleFunction = (scaleType == 'quantize' ? quantize : threshold);
+
+            // Initialize items object
+            let items = {};
+            // Iterate over options items
+            for (let key in options.style.items) {
+            let item = options.style.items[key];
+            let name = item.name;
+            let value = item.value;
+            let rangeIndex = scaleFunction(value, domain, range);
+            let keyInfo = zingchart.maps.getItemInfo(options.name, key)
+            item['background-color'] = rangeIndex.range;
+            item['original-background-color'] = rangeIndex.range;
+            item['domain'] = rangeIndex.domain;
+            item['tooltip'] = options.style.tooltip ? JSON.parse(JSON.stringify(options.style.tooltip)) : {};
+            item['tooltip']['text'] = keyInfo.tooltip.text + ' <br>' + item.value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            item['group'] = rangeIndex.group + 1;
+
+            // border color, font-color and background color can inherit
+            if (item['tooltip']['border-color'] == 'inherit')
+                item['tooltip']['border-color'] = rangeIndex.range;
+            if (item['tooltip']['backgroundColor'] == 'inherit')
+                item['tooltip']['backgroundColor'] = rangeIndex.range;
+            if (item['tooltip']['background-color'] == 'inherit')
+                item['tooltip']['background-color'] = rangeIndex.range;
+            if (item['tooltip']['font-color'] == 'inherit')
+                item['tooltip']['font-color'] = rangeIndex.range;
+            }
+
+            // Draw the legend
+            if (originalJson.choropleth.legend) {
+            drawLegend(domain, range, originalJson);
+
+            // only bind events on first load
+            if (firstTimeLoad) {
+                zingchart.bind(null, 'legend_item_click', legendClickForMaps);
+                zingchart.bind(null, 'legend_marker_click', legendClickForMaps);
+                firstTimeLoad = false;
+            }
+            }
+
+            return originalJson;
+        } else {
+            console.error('Whoa there... You need an `options` object to set the styles.');
+        }
+        });
+    })
+    
+
+    //chartItems = obj
+
+
+    
+  </script>
+</body>
+
+</html>
